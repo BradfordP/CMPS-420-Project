@@ -56,7 +56,6 @@ class EEGAnalyzer(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open EEG/EDF File", "", "EDF Files (*.edf);;All Files (*)", options=options)
 
         if file_path:
-            self.upload_button.hide()
             self.load_data(file_path)
             self.create_channel_checkboxes()
 
@@ -64,12 +63,21 @@ class EEGAnalyzer(QMainWindow):
         if self.raw_data is not None:
             channel_names = self.raw_data.ch_names
 
+
+            # self.toggle_all_checkbox = QCheckBox('Toggle All')
+            # self.toggle_all_checkbox.stateChanged.connect(self.update_plot)
+            # self.toggle_all_checkbox.setChecked(False)
+            # self.channel_checkboxes.append(self.toggle_all_checkbox)
+            # self.channel_layout.addWidget(self.toggle_all_checkbox)
+            # self.toggle_all_checkbox.stateChanged.connect(self.toggleAllCheckboxes)
+
             # Create checkboxes for each channel
             for name in channel_names:
                 checkbox = QCheckBox(name)
                 checkbox.stateChanged.connect(self.update_plot)
                 self.channel_checkboxes.append(checkbox)
                 self.channel_layout.addWidget(checkbox)
+            
 
             # Check the first channel by default
             if self.channel_checkboxes:
@@ -125,9 +133,51 @@ class EEGAnalyzer(QMainWindow):
         # Load the EDF file using MNE
         self.raw_data = mne.io.read_raw_edf(file_path, preload=True)
 
+
+class OpeningWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('FIVE GUYS')
+        
+        self.setGeometry(100, 100, 400, 200)
+        
+
+        layout = QVBoxLayout()
+        load_button = QPushButton('Load Data')
+        load_button.clicked.connect(self.load_file)
+        sample_button = QPushButton('Use Sample Data')
+        
+        layout.addWidget(load_button)
+        layout.addWidget(sample_button)
+        
+        self.setLayout(layout)
+
+    def open_secondary_window(self):
+        self.secondary_window = EEGAnalyzer()
+        self.secondary_window.show()
+
+    def load_data(self, file_path):
+        # Load the EDF file using MNE
+        self.raw_data = mne.io.read_raw_edf(file_path, preload=True)
+
+    def load_file(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open EEG/EDF File", "", "EDF Files (*.edf);;All Files (*)", options=options)
+
+        if file_path:
+            openwindow.close()
+            eeganalyzerInstance.show()
+            eeganalyzerInstance.load_data(file_path)
+            eeganalyzerInstance.create_channel_checkboxes()
+            
+
+
 if __name__ == '__main__':
     pg.setConfigOption('background', 'w')  # Set background color to white
     app = QApplication(sys.argv)
-    window = EEGAnalyzer()
-    window.show()
+    eeganalyzerInstance = EEGAnalyzer()
+    openwindow = OpeningWindow()
+    openwindow.show()
     sys.exit(app.exec_())
