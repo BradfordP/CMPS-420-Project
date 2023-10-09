@@ -183,8 +183,6 @@
 #     sys.exit(app.exec_())
 
 
-
-
 import sys
 import os
 import mne
