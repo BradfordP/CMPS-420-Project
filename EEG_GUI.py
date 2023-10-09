@@ -209,6 +209,10 @@ class EEGAnalyzer(QMainWindow):
 
         self.layout = QGridLayout(self.central_widget)
 
+        
+        self.original_data = None  # Variable to store the original data
+
+
         # Create a widget to hold the filter options
         filter_options_widget = QWidget()
 
@@ -227,6 +231,8 @@ class EEGAnalyzer(QMainWindow):
         self.apply_filter_button = QPushButton("Apply Filter", self)
         self.apply_filter_button.clicked.connect(self.apply_bandpass_filter)
 
+
+
         # Add filter controls to filter_options_layout
         filter_options_layout.addWidget(self.filter_low_label)
         filter_options_layout.addWidget(self.filter_low_textbox)
@@ -239,6 +245,13 @@ class EEGAnalyzer(QMainWindow):
 
         # Add filter_options_widget to the layout at (0, 0)
         self.layout.addWidget(filter_options_widget, 0, 0)
+
+        # Add a button to remove the bandpass filter
+        self.remove_filter_button = QPushButton("Remove Filter", self)
+        self.remove_filter_button.clicked.connect(self.remove_bandpass_filter)
+
+        # Add remove_filter_button to filter_options_layout
+        filter_options_layout.addWidget(self.remove_filter_button)
 
         # Create a widget to hold checkboxes with a fixed width
         checkboxes_widget = QWidget()
@@ -298,12 +311,36 @@ class EEGAnalyzer(QMainWindow):
 
     def apply_bandpass_filter(self):
         if self.raw_data is not None:
-            low_freq = self.filter_low_textbox.value()
-            high_freq = self.filter_high_textbox.value()
+            try:
+                low_freq = float(self.filter_low_textbox.text())
+                high_freq = float(self.filter_high_textbox.text())
+            except ValueError:
+                print("Invalid frequency values. Please enter valid numerical values.")
+                return
 
+            print(f"Applying bandpass filter: Low Frequency = {low_freq}, High Frequency = {high_freq}")
+
+            # Check if the frequencies are within a reasonable range
+            if low_freq < 0 or high_freq < 0 or low_freq >= high_freq:
+                print("Invalid frequency values. Please enter valid frequency range.")
+                return
+
+            # Apply bandpass filter
             self.raw_data.filter(l_freq=low_freq, h_freq=high_freq, method='fir', fir_window='hamming')
 
+            print("Bandpass filter applied successfully.")
+
             # After filtering, update the plot
+            self.update_plot()
+
+    def remove_bandpass_filter(self):
+        if self.original_data is not None:
+            # Restore the original data
+            self.raw_data = self.original_data.copy()
+
+            print("Bandpass filter removed successfully.")
+
+            # After removing the filter, update the plot
             self.update_plot()
 
 
@@ -340,6 +377,7 @@ class EEGAnalyzer(QMainWindow):
     def load_data(self, file_path):
         # Load the EDF file using MNE
         self.raw_data = mne.io.read_raw_edf(file_path, preload=True)
+        self.original_data = self.raw_data.copy()  # Save a copy of the original data
 
 
 class OpeningWindow(QWidget):
