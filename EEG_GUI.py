@@ -2,7 +2,8 @@
 # import os
 # import mne
 # import pyqtgraph as pg
-# from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QHBoxLayout
+# from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout, QLabel, QLineEdit, QMessageBox
+# from PyQt5.QtGui import QDoubleValidator
 # from pyqtgraph.Qt import QtGui
 # from itertools import cycle
 
@@ -19,18 +20,58 @@
 #         self.central_widget = QWidget(self)
 #         self.setCentralWidget(self.central_widget)
 
-#         self.layout = QHBoxLayout(self.central_widget)
+#         self.layout = QGridLayout(self.central_widget)
+
+        
+#         self.original_data = None  # Variable to store the original data
+
+
+#         # Create a widget to hold the filter options
+#         filter_options_widget = QWidget()
+
+#         # Create a vertical layout for the filter options
+#         filter_options_layout = QVBoxLayout(filter_options_widget)
+
+#         # Create filter controls using text boxes
+#         self.filter_low_label = QLabel("Low Frequency:")
+#         self.filter_low_textbox = QLineEdit()
+#         self.filter_low_textbox.setValidator(QDoubleValidator())
+
+#         self.filter_high_label = QLabel("High Frequency:")
+#         self.filter_high_textbox = QLineEdit()
+#         self.filter_high_textbox.setValidator(QDoubleValidator())
+
+#         self.apply_filter_button = QPushButton("Apply Filter", self)
+#         self.apply_filter_button.clicked.connect(self.apply_bandpass_filter)
+
+
+
+#         # Add filter controls to filter_options_layout
+#         filter_options_layout.addWidget(self.filter_low_label)
+#         filter_options_layout.addWidget(self.filter_low_textbox)
+#         filter_options_layout.addWidget(self.filter_high_label)
+#         filter_options_layout.addWidget(self.filter_high_textbox)
+#         filter_options_layout.addWidget(self.apply_filter_button)
+
+#         # Set a fixed width for filter_options_widget
+#         filter_options_widget.setFixedWidth(250)
+
+#         # Add filter_options_widget to the layout at (0, 0)
+#         self.layout.addWidget(filter_options_widget, 0, 0)
+
+#         # Add a button to remove the bandpass filter
+#         self.remove_filter_button = QPushButton("Remove Filter", self)
+#         self.remove_filter_button.clicked.connect(self.remove_bandpass_filter)
+
+#         # Add remove_filter_button to filter_options_layout
+#         filter_options_layout.addWidget(self.remove_filter_button)
 
 #         # Create a widget to hold checkboxes with a fixed width
-#         self.checkboxes_widget = QWidget()
-#         self.checkboxes_widget.setFixedWidth(200)  # Set a fixed width
+#         checkboxes_widget = QWidget()
+#         checkboxes_widget.setFixedWidth(250)  # Set a fixed width
 
-#         # Create a vertical layout for the checkboxes
-#         self.checkboxes_layout = QVBoxLayout(self.checkboxes_widget)
-
-#         self.upload_button = QPushButton("Upload EEG/EDF File", self)
-#         self.upload_button.clicked.connect(self.load_file)
-#         self.checkboxes_layout.addWidget(self.upload_button)
+#         # Create a vertical layout for checkboxes
+#         self.checkboxes_layout = QVBoxLayout(checkboxes_widget)
 
 #         self.channel_scroll_area = QScrollArea()
 #         self.channel_widget = QWidget()
@@ -39,15 +80,49 @@
 #         self.channel_scroll_area.setWidgetResizable(True)
 #         self.checkboxes_layout.addWidget(self.channel_scroll_area)
 
-#         self.layout.addWidget(self.checkboxes_widget)
+#         # Add checkboxes_widget to the layout at (1, 0)
+#         self.layout.addWidget(checkboxes_widget, 1, 0)
 
+#         # Add the plot widget to the layout at (0, 1)
 #         self.plot_widget = pg.PlotWidget()
-#         self.layout.addWidget(self.plot_widget)
+#         self.layout.addWidget(self.plot_widget, 0, 1, 2, 1)
 
 #         self.raw_data = None
 #         self.channel_checkboxes = []
 #         self.plotted_lines = []  # List to keep track of plotted lines
 #         self.legend_items = {}  # Dictionary to map channel names to legend items
+
+#         # Create a plot widget for the filtered data
+#         self.filtered_plot_widget = pg.PlotWidget()
+#         self.layout.addWidget(self.filtered_plot_widget, 0, 1, 2, 1)
+
+#         # Initialize the list for filtered plotted lines
+#         self.filtered_plotted_lines = []
+
+#         # Create a button to toggle between displaying raw and filtered data
+#         self.toggle_data_button = QPushButton("Show Filtered Data", self)
+#         self.toggle_data_button.clicked.connect(self.toggle_data)
+
+#         # Set the initial button as static
+#         # self.toggle_data_button.setFixedWidth(120)  # Adjust the width as needed
+#         self.layout.addWidget(self.toggle_data_button, 2, 1, 1, 1)
+
+#         # Flag to track which data is currently displayed
+#         self.show_filtered_data = False  # Set to True for the initial state
+
+#         # Create color cycles for raw and filtered data
+#         self.colors_raw = cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
+#         self.colors_filtered = cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
+    
+#         # Initialize the color indices for raw and filtered data
+#         self.color_index_raw = 0
+#         self.color_index_filtered = 0
+        
+#         # Flag to track whether filtered data is available
+#         self.filtered_data_available = False
+
+#         # Hide the filtered plot widget initially
+#         self.filtered_plot_widget.hide()
 
 #     def load_file(self):
 #         options = QFileDialog.Options()
@@ -63,21 +138,12 @@
 #         if self.raw_data is not None:
 #             channel_names = self.raw_data.ch_names
 
-
-#             # self.toggle_all_checkbox = QCheckBox('Toggle All')
-#             # self.toggle_all_checkbox.stateChanged.connect(self.update_plot)
-#             # self.toggle_all_checkbox.setChecked(False)
-#             # self.channel_checkboxes.append(self.toggle_all_checkbox)
-#             # self.channel_layout.addWidget(self.toggle_all_checkbox)
-#             # self.toggle_all_checkbox.stateChanged.connect(self.toggleAllCheckboxes)
-
 #             # Create checkboxes for each channel
 #             for name in channel_names:
 #                 checkbox = QCheckBox(name)
 #                 checkbox.stateChanged.connect(self.update_plot)
 #                 self.channel_checkboxes.append(checkbox)
 #                 self.channel_layout.addWidget(checkbox)
-            
 
 #             # Check the first channel by default
 #             if self.channel_checkboxes:
@@ -86,52 +152,156 @@
 #             # Update the plot with the default channel
 #             self.update_plot()
 
+
+#     def apply_bandpass_filter(self):
+#         if self.raw_data is not None:
+#             try:
+#                 low_freq = float(self.filter_low_textbox.text())
+#                 high_freq = float(self.filter_high_textbox.text())
+#             except ValueError:
+#                 self.show_error_message("Invalid Frequency Values", "Please enter valid numerical values for the frequency range.")
+#                 return
+
+#             print(f"Applying bandpass filter: Low Frequency = {low_freq}, High Frequency = {high_freq}")
+
+#             # Check if the frequencies are within a reasonable range
+#             if low_freq < 0 or high_freq < 0 or low_freq >= high_freq:
+#                 self.show_error_message("Invalid Frequency Range", "Please enter a valid frequency range.")
+#                 return
+
+#             # Apply bandpass filter to the filtered_data (not the raw_data)
+#             self.filtered_data = self.original_data.copy()  # Create a copy of the original data
+#             self.filtered_data.filter(l_freq=low_freq, h_freq=high_freq, method='fir', fir_window='hamming')
+
+#             print("Bandpass filter applied successfully to filtered data.")
+
+#             # Update the flag to indicate that filtered data is available
+#             self.filtered_data_available = True
+
+#             # Update the filtered plot
+#             self.update_filtered_plot()
+
+#             # Show a success message
+#             self.show_success_message("Bandpass Filter Applied", "The bandpass filter was applied successfully.")
+
+#     def show_success_message(self, title, message):
+#         msg = QMessageBox()
+#         msg.setIcon(QMessageBox.Information)
+#         msg.setWindowTitle(title)
+#         msg.setText(message)
+#         msg.exec_()
+
+#     def toggle_data(self):
+#         if self.show_filtered_data:
+#             self.show_filtered_data = False
+#             self.toggle_data_button.setText("Show Filtered Data")
+#         else:
+#             self.show_filtered_data = True
+#             self.toggle_data_button.setText("Show Raw Data")
+
+#         # Update the visibility of the plot widgets
+#         self.plot_widget.setVisible(not self.show_filtered_data)
+#         self.filtered_plot_widget.setVisible(self.show_filtered_data)
+
+#     def update_filtered_plot(self):
+#         if self.filtered_data is not None and self.filtered_data_available:
+#             data, times = self.filtered_data[:, :]
+#             num_channels = data.shape[0]
+#             legend_items = []
+
+#             # Remove previously plotted lines for filtered data
+#             for line in self.filtered_plotted_lines:
+#                 self.filtered_plot_widget.removeItem(line)
+
+#             # Reset color index to the beginning
+#             self.color_index_filtered = 0
+
+#             for i, checkbox in enumerate(self.channel_checkboxes):
+#                 if checkbox.isChecked():
+#                     channel_name = checkbox.text()
+
+#                     # Get the color from the current index and update the index
+#                     color = self.get_next_color(self.color_index_filtered, is_filtered=True)
+#                     self.color_index_filtered += 1
+
+#                     channel_data = data[self.filtered_data.ch_names.index(channel_name), :]
+#                     line = self.filtered_plot_widget.plot(times, channel_data, pen=pg.mkPen(color), name=channel_name)
+#                     self.filtered_plotted_lines.append(line)
+#                     legend_items.append((line, channel_name))
+
+#             # Update the legend for the filtered plot
+#             self.filtered_plot_widget.addLegend(items=legend_items)
+    
+
+
+#     def remove_bandpass_filter(self):
+#         if self.original_data is not None:
+#             # Restore the original data
+#             self.raw_data = self.original_data.copy()
+
+#             print("Bandpass filter removed successfully.")
+
+#             # After removing the filter, update the plot
+#             self.update_plot()
+
+
 #     def update_plot(self):
 #         if self.raw_data is not None:
 #             data, times = self.raw_data[:, :]
 #             num_channels = data.shape[0]
-
 #             selected_channels = []
-#             colors = cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])  # Define a list of colors for different lines
+#             legend_items = []
 
-#             # Remove previously plotted lines
+#             # Remove previously plotted lines (for both raw and filtered data)
 #             for line in self.plotted_lines:
 #                 self.plot_widget.removeItem(line)
-#             self.plotted_lines.clear()
 
-#             # Update the legend items
-#             num_columns = 4  # Number of columns in the legend
-#             column_height = 30  # Height of each column
-#             current_column = 0  # Current column in the legend layout
-#             legend_items = []  # Temporary list for legend items
-#             legend_width = 0
+#             # Reset color index to the beginning
+#             self.color_index_raw = 0
 
 #             for i, checkbox in enumerate(self.channel_checkboxes):
 #                 if checkbox.isChecked():
 #                     channel_name = checkbox.text()
 #                     selected_channels.append(channel_name)
-#                     color = next(colors)
+
+#                     # Get the color from the current index and update the index
+#                     color = self.get_next_color(self.color_index_raw, is_filtered=False)
+#                     self.color_index_raw += 1
+
 #                     channel_data = data[self.raw_data.ch_names.index(channel_name), :]
 #                     line = self.plot_widget.plot(times, channel_data, pen=pg.mkPen(color), name=channel_name)
 #                     self.plotted_lines.append(line)
+#                     legend_items.append((line, channel_name))
 
-#                     if channel_name not in self.legend_items:
-#                         legend_item = self.plot_widget.addLegend(offset=(legend_width, current_column * column_height))
-#                         self.legend_items[channel_name] = legend_item
-#                         legend_items.append(legend_item)
-#                         legend_width += 200  # Adjust the legend width
+#             # Update the legend for raw data
+#             self.plot_widget.addLegend(items=legend_items)
 
-#                     current_column += 1
-#                     if current_column >= num_columns:
-#                         current_column = 0
+#             # Update the legend for filtered data if it's currently shown
+#             if self.show_filtered_data:
+#                 self.update_filtered_plot()
 
-#             # Update the legend layout
-#             legend_height = ((len(legend_items) - 1) // num_columns + 1) * column_height
-#             self.plot_widget.legend.setGeometry(0, 0, legend_width, legend_height)
+#             # Hide or show the filtered plot based on the toggle button
+#             self.filtered_plot_widget.setVisible(self.show_filtered_data)
+#             self.plot_widget.setVisible(not self.show_filtered_data)
+
+#     def get_next_color(self, index, is_filtered=False):
+#         # Define color cycles for raw and filtered data
+#         raw_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+#         filtered_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+
+#         colors = filtered_colors if is_filtered else raw_colors
+
+#         # Get the color based on the index and reset if necessary
+#         if index < len(colors):
+#             return colors[index]
+#         else:
+#             return colors[index % len(colors)]
+        
 
 #     def load_data(self, file_path):
 #         # Load the EDF file using MNE
 #         self.raw_data = mne.io.read_raw_edf(file_path, preload=True)
+#         self.original_data = self.raw_data.copy()  # Save a copy of the original data
 
 
 # class OpeningWindow(QWidget):
@@ -183,11 +353,13 @@
 #     sys.exit(app.exec_())
 
 
+
 import sys
 import os
 import mne
+from PyQt5.QtCore import Qt, QTimer
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout, QLabel, QLineEdit, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout, QLabel, QLineEdit
 from PyQt5.QtGui import QDoubleValidator
 from pyqtgraph.Qt import QtGui
 from itertools import cycle
@@ -197,6 +369,24 @@ class EEGAnalyzer(QMainWindow):
         super().__init__()
 
         self.initUI()
+
+        # Notification label with initial position at the bottom-right
+        self.notification_label = QLabel(self)
+        self.notification_label.setAlignment(Qt.AlignCenter)
+        self.notification_label.setStyleSheet("background-color: #2ecc71; color: white;")
+        self.notification_label.setFixedHeight(30)
+
+        # Calculate the position based on screen size
+        screen_size = QApplication.primaryScreen().availableGeometry()
+        label_size = self.notification_label.size()
+        new_x = screen_size.width() - label_size.width()
+        new_y = screen_size.height() - label_size.height()
+        self.notification_label.move(new_x, new_y)
+
+        self.notification_label.hide()
+
+        self.notification_timer = QTimer(self)
+        self.notification_timer.timeout.connect(self.clear_notification)
 
     def initUI(self):
         self.setWindowTitle("EEG Analyzer")
@@ -239,7 +429,7 @@ class EEGAnalyzer(QMainWindow):
         filter_options_layout.addWidget(self.apply_filter_button)
 
         # Set a fixed width for filter_options_widget
-        filter_options_widget.setFixedWidth(200)
+        filter_options_widget.setFixedWidth(250)
 
         # Add filter_options_widget to the layout at (0, 0)
         self.layout.addWidget(filter_options_widget, 0, 0)
@@ -253,7 +443,7 @@ class EEGAnalyzer(QMainWindow):
 
         # Create a widget to hold checkboxes with a fixed width
         checkboxes_widget = QWidget()
-        checkboxes_widget.setFixedWidth(200)  # Set a fixed width
+        checkboxes_widget.setFixedWidth(250)  # Set a fixed width
 
         # Create a vertical layout for checkboxes
         self.checkboxes_layout = QVBoxLayout(checkboxes_widget)
@@ -277,6 +467,37 @@ class EEGAnalyzer(QMainWindow):
         self.plotted_lines = []  # List to keep track of plotted lines
         self.legend_items = {}  # Dictionary to map channel names to legend items
 
+        # Create a plot widget for the filtered data
+        self.filtered_plot_widget = pg.PlotWidget()
+        self.layout.addWidget(self.filtered_plot_widget, 0, 1, 2, 1)
+
+        # Initialize the list for filtered plotted lines
+        self.filtered_plotted_lines = []
+
+        # Create a button to toggle between displaying raw and filtered data
+        self.toggle_data_button = QPushButton("Show Filtered Data", self)
+        self.toggle_data_button.clicked.connect(self.toggle_data)
+
+        # Set the initial button as static
+        # self.toggle_data_button.setFixedWidth(120)  # Adjust the width as needed
+        self.layout.addWidget(self.toggle_data_button, 2, 1, 1, 1)
+
+        # Flag to track which data is currently displayed
+        self.show_filtered_data = False  # Set to True for the initial state
+
+        # Create color cycles for raw and filtered data
+        self.colors_raw = cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
+        self.colors_filtered = cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
+    
+        # Initialize the color indices for raw and filtered data
+        self.color_index_raw = 0
+        self.color_index_filtered = 0
+        
+        # Flag to track whether filtered data is available
+        self.filtered_data_available = False
+
+        # Hide the filtered plot widget initially
+        self.filtered_plot_widget.hide()
 
     def load_file(self):
         options = QFileDialog.Options()
@@ -313,23 +534,109 @@ class EEGAnalyzer(QMainWindow):
                 low_freq = float(self.filter_low_textbox.text())
                 high_freq = float(self.filter_high_textbox.text())
             except ValueError:
-                print("Invalid frequency values. Please enter valid numerical values.")
+                self.show_notification("Invalid Frequency Values", "Please enter valid numerical values for the frequency range.")
                 return
 
             print(f"Applying bandpass filter: Low Frequency = {low_freq}, High Frequency = {high_freq}")
 
             # Check if the frequencies are within a reasonable range
             if low_freq < 0 or high_freq < 0 or low_freq >= high_freq:
-                print("Invalid frequency values. Please enter valid frequency range.")
+                self.show_notification("Invalid Frequency Range", "Please enter a valid frequency range.")
                 return
 
-            # Apply bandpass filter
-            self.raw_data.filter(l_freq=low_freq, h_freq=high_freq, method='fir', fir_window='hamming')
+            # Apply bandpass filter to the filtered_data (not the raw_data)
+            self.filtered_data = self.original_data.copy()  # Create a copy of the original data
+            self.filtered_data.filter(l_freq=low_freq, h_freq=high_freq, method='fir', fir_window='hamming')
 
-            print("Bandpass filter applied successfully.")
+            print("Bandpass filter applied successfully to filtered data.")
 
-            # After filtering, update the plot
-            self.update_plot()
+            # Update the flag to indicate that filtered data is available
+            self.filtered_data_available = True
+
+            # Update the filtered plot
+            self.update_filtered_plot()
+
+            # Show a success message using a notification
+            self.show_notification("Success", "Bandpass filter applied successfully.")
+
+    def show_notification(self, title, message):
+        self.notification_label.setText(f"{title}: {message}")
+        self.notification_label.show()
+
+        # Calculate the position based on the window's position and size
+        window_size = self.size()
+        label_size = self.notification_label.size()
+        offset = 10  # Adjust the offset value as needed
+
+        new_x = window_size.width() - label_size.width() - offset  # Bottom-right corner with offset
+        new_y = window_size.height() - label_size.height() - offset
+        # Adjust the 'left' offset to move the label to the left
+        left_offset = 150  # Adjust the left offset as needed
+        new_x -= left_offset
+
+        # Set a fixed width (adjust the value as needed)
+        self.notification_label.setFixedWidth(250)  # Adjust the width as needed
+
+        self.notification_label.move(new_x, new_y)
+        self.notification_timer.start(5000)  # Display for 5 seconds
+
+    def clear_notification(self):
+        self.notification_label.clear()
+        self.notification_label.hide()
+        self.notification_timer.stop()
+
+    def resizeEvent(self):
+        # Calculate the new position of the notification label
+        label_size = self.notification_label.size()
+        screen_size = QApplication.primaryScreen().availableGeometry()
+        new_x = screen_size.width() - label_size.width()
+        new_y = screen_size.height() - label_size.height()
+
+        # Set the new position
+        self.notification_label.move(new_x, new_y)
+
+    def toggle_data(self):
+        if self.show_filtered_data:
+            self.show_filtered_data = False
+            self.toggle_data_button.setText("Show Filtered Data")
+        else:
+            self.show_filtered_data = True
+            self.toggle_data_button.setText("Show Raw Data")
+
+        # Update the visibility of the plot widgets
+        self.plot_widget.setVisible(not self.show_filtered_data)
+        self.filtered_plot_widget.setVisible(self.show_filtered_data)
+
+    def update_filtered_plot(self):
+        if self.filtered_data is not None and self.filtered_data_available:
+            data, times = self.filtered_data[:, :]
+            num_channels = data.shape[0]
+            legend_items = []
+
+            # Remove previously plotted lines for filtered data
+            for line in self.filtered_plotted_lines:
+                self.filtered_plot_widget.removeItem(line)
+
+            # Reset color index to the beginning
+            self.color_index_filtered = 0
+
+            for i, checkbox in enumerate(self.channel_checkboxes):
+                if checkbox.isChecked():
+                    channel_name = checkbox.text()
+
+                    # Get the color from the current index and update the index
+                    color = self.get_next_color(self.color_index_filtered, is_filtered=True)
+                    self.color_index_filtered += 1
+
+                    channel_data = data[self.filtered_data.ch_names.index(channel_name), :]
+                    line = self.filtered_plot_widget.plot(times, channel_data, pen=pg.mkPen(color), name=channel_name)
+                    self.filtered_plotted_lines.append(line)
+                    legend_items.append((line, channel_name))
+
+            # Update the legend for the filtered plot
+            self.filtered_plot_widget.addLegend(items=legend_items)
+    
+
 
     def remove_bandpass_filter(self):
         if self.original_data is not None:
@@ -346,31 +653,54 @@ class EEGAnalyzer(QMainWindow):
         if self.raw_data is not None:
             data, times = self.raw_data[:, :]
             num_channels = data.shape[0]
-
             selected_channels = []
-            colors = cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])  # Define a list of colors for different lines
+            legend_items = []
 
-            # Remove previously plotted lines
+            # Remove previously plotted lines (for both raw and filtered data)
             for line in self.plotted_lines:
                 self.plot_widget.removeItem(line)
-            self.plotted_lines.clear()
 
-            # Update the legend items
-            legend_items = []
+            # Reset color index to the beginning
+            self.color_index_raw = 0
 
             for i, checkbox in enumerate(self.channel_checkboxes):
                 if checkbox.isChecked():
                     channel_name = checkbox.text()
                     selected_channels.append(channel_name)
-                    color = next(colors)
+
+                    # Get the color from the current index and update the index
+                    color = self.get_next_color(self.color_index_raw, is_filtered=False)
+                    self.color_index_raw += 1
+
                     channel_data = data[self.raw_data.ch_names.index(channel_name), :]
                     line = self.plot_widget.plot(times, channel_data, pen=pg.mkPen(color), name=channel_name)
                     self.plotted_lines.append(line)
                     legend_items.append((line, channel_name))
 
-            # Update the legend
+            # Update the legend for raw data
             self.plot_widget.addLegend(items=legend_items)
 
+            # Update the legend for filtered data if it's currently shown
+            if self.show_filtered_data:
+                self.update_filtered_plot()
+
+            # Hide or show the filtered plot based on the toggle button
+            self.filtered_plot_widget.setVisible(self.show_filtered_data)
+            self.plot_widget.setVisible(not self.show_filtered_data)
+
+    def get_next_color(self, index, is_filtered=False):
+        # Define color cycles for raw and filtered data
+        raw_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+        filtered_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+
+        colors = filtered_colors if is_filtered else raw_colors
+
+        # Get the color based on the index and reset if necessary
+        if index < len(colors):
+            return colors[index]
+        else:
+            return colors[index % len(colors)]
+        
 
     def load_data(self, file_path):
         # Load the EDF file using MNE
