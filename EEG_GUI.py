@@ -585,15 +585,15 @@ class EEGAnalyzer(QMainWindow):
         self.notification_label.hide()
         self.notification_timer.stop()
 
-    def resizeEvent(self):
-        # Calculate the new position of the notification label
-        label_size = self.notification_label.size()
-        screen_size = QApplication.primaryScreen().availableGeometry()
-        new_x = screen_size.width() - label_size.width()
-        new_y = screen_size.height() - label_size.height()
+    # def resizeEvent(self):
+    #     # Calculate the new position of the notification label
+    #     label_size = self.notification_label.size()
+    #     screen_size = QApplication.primaryScreen().availableGeometry()
+    #     new_x = screen_size.width() - label_size.width()
+    #     new_y = screen_size.height() - label_size.height()
 
-        # Set the new position
-        self.notification_label.move(new_x, new_y)
+    #     # Set the new position
+    #     self.notification_label.move(new_x, new_y)
 
     def toggle_data(self):
         if self.show_filtered_data:
