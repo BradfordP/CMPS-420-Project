@@ -1,8 +1,9 @@
 # import sys
 # import os
 # import mne
+# from PyQt5.QtCore import Qt, QTimer
 # import pyqtgraph as pg
-# from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout, QLabel, QLineEdit, QMessageBox
+# from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout, QLabel, QLineEdit
 # from PyQt5.QtGui import QDoubleValidator
 # from pyqtgraph.Qt import QtGui
 # from itertools import cycle
@@ -12,6 +13,24 @@
 #         super().__init__()
 
 #         self.initUI()
+
+#         # Notification label with initial position at the bottom-right
+#         self.notification_label = QLabel(self)
+#         self.notification_label.setAlignment(Qt.AlignCenter)
+#         self.notification_label.setStyleSheet("background-color: #2ecc71; color: white;")
+#         self.notification_label.setFixedHeight(30)
+
+#         # Calculate the position based on screen size
+#         screen_size = QApplication.primaryScreen().availableGeometry()
+#         label_size = self.notification_label.size()
+#         new_x = screen_size.width() - label_size.width()
+#         new_y = screen_size.height() - label_size.height()
+#         self.notification_label.move(new_x, new_y)
+
+#         self.notification_label.hide()
+
+#         self.notification_timer = QTimer(self)
+#         self.notification_timer.timeout.connect(self.clear_notification)
 
 #     def initUI(self):
 #         self.setWindowTitle("EEG Analyzer")
@@ -159,14 +178,14 @@
 #                 low_freq = float(self.filter_low_textbox.text())
 #                 high_freq = float(self.filter_high_textbox.text())
 #             except ValueError:
-#                 self.show_error_message("Invalid Frequency Values", "Please enter valid numerical values for the frequency range.")
+#                 self.show_notification("Invalid Frequency Values", "Please enter valid numerical values for the frequency range.")
 #                 return
 
 #             print(f"Applying bandpass filter: Low Frequency = {low_freq}, High Frequency = {high_freq}")
 
 #             # Check if the frequencies are within a reasonable range
 #             if low_freq < 0 or high_freq < 0 or low_freq >= high_freq:
-#                 self.show_error_message("Invalid Frequency Range", "Please enter a valid frequency range.")
+#                 self.show_notification("Invalid Frequency Range", "Please enter a valid frequency range.")
 #                 return
 
 #             # Apply bandpass filter to the filtered_data (not the raw_data)
@@ -181,15 +200,44 @@
 #             # Update the filtered plot
 #             self.update_filtered_plot()
 
-#             # Show a success message
-#             self.show_success_message("Bandpass Filter Applied", "The bandpass filter was applied successfully.")
+#             # Show a success message using a notification
+#             self.show_notification("Success", "Bandpass filter applied successfully.")
 
-#     def show_success_message(self, title, message):
-#         msg = QMessageBox()
-#         msg.setIcon(QMessageBox.Information)
-#         msg.setWindowTitle(title)
-#         msg.setText(message)
-#         msg.exec_()
+#     def show_notification(self, title, message):
+#         self.notification_label.setText(f"{title}: {message}")
+#         self.notification_label.show()
+
+#         # Calculate the position based on the window's position and size
+#         window_size = self.size()
+#         label_size = self.notification_label.size()
+#         offset = 10  # Adjust the offset value as needed
+
+#         new_x = window_size.width() - label_size.width() - offset  # Bottom-right corner with offset
+#         new_y = window_size.height() - label_size.height() - offset
+#         # Adjust the 'left' offset to move the label to the left
+#         left_offset = 150  # Adjust the left offset as needed
+#         new_x -= left_offset
+
+#         # Set a fixed width (adjust the value as needed)
+#         self.notification_label.setFixedWidth(250)  # Adjust the width as needed
+
+#         self.notification_label.move(new_x, new_y)
+#         self.notification_timer.start(5000)  # Display for 5 seconds
+
+#     def clear_notification(self):
+#         self.notification_label.clear()
+#         self.notification_label.hide()
+#         self.notification_timer.stop()
+
+#     # def resizeEvent(self):
+#     #     # Calculate the new position of the notification label
+#     #     label_size = self.notification_label.size()
+#     #     screen_size = QApplication.primaryScreen().availableGeometry()
+#     #     new_x = screen_size.width() - label_size.width()
+#     #     new_y = screen_size.height() - label_size.height()
+
+#     #     # Set the new position
+#     #     self.notification_label.move(new_x, new_y)
 
 #     def toggle_data(self):
 #         if self.show_filtered_data:
@@ -357,9 +405,12 @@
 import sys
 import os
 import mne
+from mne.preprocessing import ICA
+from mne.channels import make_standard_montage, make_dig_montage
+import numpy as np
 from PyQt5.QtCore import Qt, QTimer
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout, QLabel, QLineEdit
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout, QLabel, QLineEdit, QAction
 from PyQt5.QtGui import QDoubleValidator
 from pyqtgraph.Qt import QtGui
 from itertools import cycle
@@ -367,6 +418,10 @@ from itertools import cycle
 class EEGAnalyzer(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        self.showing_ica_data = False  # Flag to track whether ICA data is currently displayed
+        self.show_ica_data_button = None
+
 
         self.initUI()
 
@@ -399,6 +454,40 @@ class EEGAnalyzer(QMainWindow):
 
         
         self.original_data = None  # Variable to store the original data
+
+
+
+        
+        # Create a menu bar
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu('File')
+        
+        # Add a new menu for ICA Preprocessing
+        ica_menu = menubar.addMenu('ICA Preprocessing')
+        ica_menu.setToolTipsVisible(True)
+
+        ica_action = QAction('Run Automatic ICA', self)
+        ica_action.setToolTip('Applies basic ICA preprocessing for\nsimplified use.')
+
+        #ica_action.triggered.connect(self.run_ica)
+
+        ica_menu.addAction(ica_action)
+
+        # Add actions to the File menu
+        load_action = QAction('Load Data', self)
+        load_action.triggered.connect(self.load_file)
+        file_menu.addAction(load_action)
+
+        sample_action = QAction('Use Sample Data', self)
+        file_menu.addAction(sample_action)
+
+
+
+
+
+
+
+
 
 
         # Create a widget to hold the filter options
@@ -462,6 +551,16 @@ class EEGAnalyzer(QMainWindow):
         self.plot_widget = pg.PlotWidget()
         self.layout.addWidget(self.plot_widget, 0, 1, 2, 1)
 
+
+        self.create_ica_button()
+
+
+
+
+
+
+
+
         self.raw_data = None
         self.channel_checkboxes = []
         self.plotted_lines = []  # List to keep track of plotted lines
@@ -498,6 +597,95 @@ class EEGAnalyzer(QMainWindow):
 
         # Hide the filtered plot widget initially
         self.filtered_plot_widget.hide()
+
+#Remember this shit for when you try to do layouts later on:
+#addWidget(self, a0: QWidget, row: int, column: int, rowSpan: int, columnSpan: int, alignment: Union[Qt.Alignment, Qt.AlignmentFlag] = Qt.Alignment()) <-- This is what the numbers mean next to self.layout.addWidget(xyz, 2, 0, 1, 1)
+###
+# Big block underneath goes here
+###
+
+    
+
+
+
+
+
+
+    def create_ica_button(self):
+        self.show_ica_data_button = QPushButton("Show ICA Data", self)
+        self.show_ica_data_button.clicked.connect(self.run_ica)  # Connect to the run_ica method
+
+        self.layout.addWidget(self.show_ica_data_button, 2, 0, 1, 1)
+        self.show_ica_data_button.show()  # Hide the button initially
+
+
+    def run_ica(self):
+        if self.raw_data is not None:
+            # Apply ICA
+            ica = ICA(n_components=len(self.raw_data.ch_names), random_state=97, max_iter=800)
+            ica.fit(self.raw_data)
+
+            # Get the ICA components
+            ica_components = ica.get_sources(self.raw_data)  # Pass the raw data to get_sources
+
+            # Update the plot widget with ICA components
+            self.update_plot_with_ica(ica_components)
+
+            # Set the flag to indicate that ICA data is currently displayed
+            self.show_ica_data = True
+
+    def update_plot_with_ica(self, ica_components):
+        # Clear the existing plot
+        self.plot_widget.clear()
+
+        # Plot ICA components on the existing plot widget
+        num_components = ica_components.info['nchan']
+        times = ica_components.times
+        data = ica_components.get_data()
+
+        legend_items = []
+
+        for i in range(num_components):
+            color = self.get_next_color(i, is_filtered=False)
+            channel_data = data[i, :]
+            line = self.plot_widget.plot(times, channel_data, pen=pg.mkPen(color), name=f'ICA Component {i + 1}')
+            legend_items.append((line, f'ICA Component {i + 1}'))
+
+        # Add legend to the plot
+        self.plot_widget.addLegend(items=legend_items)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def load_file(self):
         options = QFileDialog.Options()
@@ -702,10 +890,62 @@ class EEGAnalyzer(QMainWindow):
             return colors[index % len(colors)]
         
 
+
+
+
+
+
+
+
     def load_data(self, file_path):
         # Load the EDF file using MNE
         self.raw_data = mne.io.read_raw_edf(file_path, preload=True)
+
+        # Extract the channel names from the raw data
+        channel_names_raw = self.raw_data.ch_names
+
+        # Create a standard 10-20 montage
+        standard_montage = mne.channels.make_standard_montage('standard_1020')
+
+        # Extract the channel names from the standard montage
+        channel_names_montage = standard_montage.ch_names
+
+        # Find the intersection of channel names between raw data and montage
+        included_channels = list(set(channel_names_raw) & set(channel_names_montage))
+
+        # Check if digitization points are available
+        if not self.raw_data.info['dig']:
+            print("No digitization points found. Creating a default montage.")
+            
+            # Manually set the channel types for each channel in raw_data
+            for channel in self.raw_data.info['chs']:
+                if channel['ch_name'] in included_channels:
+                    channel['kind'] = mne.io.constants.FIFF.FIFFV_EEG_CH
+
+            # Set the standard montage to None
+            standard_montage = None
+
+        # Ensure that channel names in raw_data match the montage exactly
+        self.raw_data.pick_channels(included_channels)
+
+        self.raw_data.set_montage(standard_montage)
+
         self.original_data = self.raw_data.copy()  # Save a copy of the original data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class OpeningWindow(QWidget):
@@ -755,3 +995,179 @@ if __name__ == '__main__':
     openwindow = OpeningWindow()
     openwindow.show()
     sys.exit(app.exec_())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    # def apply_auto_ica(self):
+    #     # Check if raw data is available
+    #     if self.raw_data is not None:
+    #         # Create an ICA object
+    #         ica = ICA(n_components=len(self.raw_data.ch_names), random_state=97, max_iter=800)
+
+    #         # Manually create a DigMontage based on the channel positions in your raw data
+    #         ch_pos = dict(zip(self.raw_data.ch_names, self.raw_data.get_channel_positions()))
+    #         dig_montage = mne.channels.DigMontage(ch_pos=ch_pos)
+
+    #         # Set the montage
+    #         self.raw_data.set_montage(dig_montage)
+
+    #         # Fit the ICA model to the raw data
+    #         ica.fit(self.raw_data)
+
+    #         # Plot the ICA components for manual inspection (optional)
+    #         ica.plot_components()
+
+    #         # Automatically select and remove artifacts
+    #         ica.exclude = []  # Set to exclude the components identified automatically
+    #         ica.apply(self.raw_data)
+
+    #         print("Automatic ICA preprocessing completed.")
+
+    #         # Update the plot after preprocessing
+    #         self.update_plot()
+    #     else:
+    #         print("No raw data available for ICA preprocessing.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def apply_auto_ica(self):
+    #     if self.raw_data is not None:
+    #         # Create an ICA object
+    #         ica = ICA(n_components=len(self.raw_data.ch_names), random_state=97, max_iter=800)
+
+    #         # Fit the ICA model to the raw data
+    #         ica.fit(self.raw_data)
+
+    #         # Automatically exclude a fixed number or percentage of components
+    #         # n_components_to_exclude = 5  # Adjust this number as needed
+    #         # OR
+    #         percentage_to_exclude = 20  # Adjust this percentage as needed
+
+    #         # Set the components to exclude
+    #         # ica.exclude = list(range(n_components_to_exclude))
+    #         # OR
+    #         ica.exclude = list(range(int(len(ica.mixing_matrix_) * (percentage_to_exclude / 100))))
+
+    #         # Apply ICA with the specified exclusions
+    #         ica.apply(self.raw_data)
+
+    #         print("Automatic ICA preprocessing completed.")
+
+    #     else:
+    #         print("No raw data available for ICA preprocessing.")
+
+
+
+
+
+
+
+    # def run_ica(self):
+    #     # Apply automatic ICA preprocessing
+    #     self.apply_auto_ica()
+
+    #     # Check if the ICA button is not already created
+    #     if self.show_ica_data_button is None:
+    #         # Create the button to show ICA data
+    #         self.create_ica_button()
+
+    #         # Show the ICA button
+    #         self.show_ica_data_button.show()
+
+    #         # Call the method to show the ICA data plot
+    #         self.show_ica_data_plot()
+    #     if self.showing_ica_data:
+    #         self.show_ica_data_plot()
+    #     else:
+    #         self.update_plot()
+
+
+
+
+    #     # Add your actual ICA preprocessing logic here
+    #     # Once the ICA preprocessing is done, you can call the method to show the ICA data plot
+    #     # self.show_ica_data_plot()
+
+
+    # def create_ica_button(self):
+    #     self.show_ica_data_button = QPushButton("Show ICA Data", self)
+    #     self.show_ica_data_button.clicked.connect(self.toggle_ICA_data_view)  # Connect to the toggle_data_view method
+    #     self.layout.addWidget(self.show_ica_data_button, 2, 0, 1, 1)
+    #     self.show_ica_data_button.hide()  # Hide the button initially
+
+
+    # def toggle_ICA_data_view(self):
+    #     self.showing_ica_data = not self.showing_ica_data
+
+    #     if self.showing_ica_data:
+    #         self.toggle_data_button.setText("Show Raw Data")
+    #         self.show_ica_data_plot()
+    #     else:
+    #         self.toggle_data_button.setText("Show ICA Data")
+    #         self.update_plot()
+
+
+
+
+
+    # def show_ica_data_plot(self):
+    #     # Check if ICA data is available
+    #     if hasattr(self.raw_data, 'ica_') and self.raw_data.ica_ is not None:
+    #         ica_data = self.raw_data.ica_.get_sources()
+
+    #         # Plot ICA data
+    #         data, times = ica_data[:, :]
+    #         num_channels = data.shape[0]
+    #         legend_items = []
+
+    #         # Remove previously plotted lines for ICA data
+    #         for line in self.filtered_plotted_lines:
+    #             self.filtered_plot_widget.removeItem(line)
+
+    #         # Reset color index to the beginning
+    #         self.color_index_filtered = 0
+
+    #         for i, checkbox in enumerate(self.channel_checkboxes):
+    #             if checkbox.isChecked():
+    #                 channel_name = checkbox.text()
+
+    #                 # Get the color from the current index and update the index
+    #                 color = self.get_next_color(self.color_index_filtered, is_filtered=True)
+    #                 self.color_index_filtered += 1
+
+    #                 channel_data = data[self.raw_data.ch_names.index(channel_name), :]
+    #                 line = self.filtered_plot_widget.plot(times, channel_data, pen=pg.mkPen(color), name=channel_name)
+    #                 self.filtered_plotted_lines.append(line)
+    #                 legend_items.append((line, channel_name))
+
+    #         # Update the legend for the ICA plot
+    #         self.filtered_plot_widget.addLegend(items=legend_items)
+    #     else:
+    #         print("ICA data not available. Run automatic ICA preprocessing first.")
