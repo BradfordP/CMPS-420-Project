@@ -480,6 +480,21 @@ class EEGAnalyzer(QMainWindow):
 
         sample_action = QAction('Use Sample Data', self)
         file_menu.addAction(sample_action)
+        
+        # Create a button for Tranform
+        transform_menu = menubar.addMenu('Transform')
+        transform_menu.setToolTipsVisible(True)
+        
+        LOGX_action = QAction('Log X', self)
+        LOGX_action.setToolTip('Transforms the graph using the Log x function')
+        
+        LOGY_action = QAction('Log Y', self)
+        LOGY_action.setToolTip('Transforms the graph using the Log y function')
+        
+        
+        transform_menu.addAction(LOGX_action)
+        transform_menu.addAction(LOGY_action)
+        
 
 
 
