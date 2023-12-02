@@ -457,9 +457,6 @@ class EEGAnalyzer(QMainWindow):
         
         self.original_data = None  # Variable to store the original data
 
-
-
-        
         # Create a menu bar
         menubar = self.menuBar()
         file_menu = menubar.addMenu('File')
@@ -562,12 +559,6 @@ class EEGAnalyzer(QMainWindow):
         self.create_ica_button()
 
 
-
-
-
-
-
-
         self.raw_data = None
         self.channel_checkboxes = []
         self.plotted_lines = []  # List to keep track of plotted lines
@@ -604,6 +595,8 @@ class EEGAnalyzer(QMainWindow):
 
         # Hide the filtered plot widget initially
         self.filtered_plot_widget.hide()
+
+
 
 #Remember this shit for when you try to do layouts later on:
 #addWidget(self, a0: QWidget, row: int, column: int, rowSpan: int, columnSpan: int, alignment: Union[Qt.Alignment, Qt.AlignmentFlag] = Qt.Alignment()) <-- This is what the numbers mean next to self.layout.addWidget(xyz, 2, 0, 1, 1)
@@ -663,35 +656,6 @@ class EEGAnalyzer(QMainWindow):
 
         # Add legend to the plot
         self.plot_widget.addLegend(items=legend_items)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
