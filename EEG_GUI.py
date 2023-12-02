@@ -405,7 +405,9 @@
 import sys
 import os
 import mne
+from mne import read_evokeds
 from mne.preprocessing import ICA
+from mne.datasets import sample
 from mne.channels import make_standard_montage, make_dig_montage
 import numpy as np
 from PyQt5.QtCore import Qt, QTimer
@@ -458,7 +460,15 @@ class EEGAnalyzer(QMainWindow):
         # Create a menu bar
         menubar = self.menuBar()
         file_menu = menubar.addMenu('File')
-        
+
+        # Add menu option for topographic maps
+        topo_menu = menubar.addMenu('Topographic Maps')
+        topo_menu.setToolTipsVisible(True)
+
+        topo_action = QAction('Display Topographic Maps', self)
+        topo_menu.addAction(topo_action)
+        topo_action.triggered.connect(self.run_topo_map)
+
         # Add a new menu for ICA Preprocessing
         ica_menu = menubar.addMenu('ICA Preprocessing')
         ica_menu.setToolTipsVisible(True)
@@ -477,6 +487,11 @@ class EEGAnalyzer(QMainWindow):
 
         sample_action = QAction('Use Sample Data', self)
         file_menu.addAction(sample_action)
+
+        
+
+
+
 
 
         # Create a widget to hold the filter options
@@ -589,6 +604,14 @@ class EEGAnalyzer(QMainWindow):
 # Big block underneath goes here
 ###
 
+    def run_topo_map(self):
+        path = sample.data_path()
+        condition = "Left Auditory"
+        fname = path / "MEG" / "sample" / "sample_audvis-ave.fif"
+        times = np.arange(0.05, 0.151, 0.02)
+        evoked = read_evokeds(fname, condition=condition, baseline=(None, 0))
+        evoked.plot_topomap(times, ch_type="eeg", average=0.05)
+        
 
 
     def create_ica_button(self):
@@ -647,6 +670,7 @@ class EEGAnalyzer(QMainWindow):
         if file_path:
             self.load_data(file_path)
             self.create_channel_checkboxes()
+        return file_path
 
     def create_channel_checkboxes(self):
         if self.raw_data is not None:
@@ -679,7 +703,7 @@ class EEGAnalyzer(QMainWindow):
             print(f"Applying bandpass filter: Low Frequency = {low_freq}, High Frequency = {high_freq}")
 
             # Check if the frequencies are within a reasonable range
-            if low_freq < 0 or high_freq < 0 or low_freq >= high_freq:
+            if low_freq < 0 or high_freq < 0 or low_freq < high_freq:
                 self.show_notification("Invalid Frequency Range", "Please enter a valid frequency range.")
                 return
 
@@ -918,8 +942,12 @@ class OpeningWindow(QWidget):
         self.setLayout(layout)
 
     def open_secondary_window(self):
-        self.secondary_window = EEGAnalyzer()
-        self.secondary_window.show()
+        file_path = self.load_file()
+        print("FILE PATH2:", file_path)
+        if file_path:
+            self.secondary_window = EEGAnalyzer()
+            self.secondary_window.show()
+            self.secondary_window.run_topo_map(file_path)
 
     def load_data(self, file_path):
         # Load the EDF file using MNE
@@ -936,7 +964,8 @@ class OpeningWindow(QWidget):
             eeganalyzerInstance.show()
             eeganalyzerInstance.load_data(file_path)
             eeganalyzerInstance.create_channel_checkboxes()
-            
+        
+        return file_path
 
 
 if __name__ == '__main__':
